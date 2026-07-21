@@ -1,26 +1,43 @@
 """AI-SAST deployment script for Alibaba Cloud ECS.
-Usage: set env vars before running:
-  SAST_HOST (required) - ECS IP address
-  SAST_USER (optional, default: root)
-  SAST_PASSWORD (required) - SSH password
-  QWEN_API_KEY (required) - Tongyi Qianwen API key
+
+Secrets are loaded in order:
+  1. Environment variables (SAST_HOST, SAST_PASSWORD, QWEN_API_KEY)
+  2. .env file in project root (NOT committed to git)
+
+Usage:
+  python scripts/deploy.py
 """
 import os
 import sys
 import time
+from pathlib import Path
 import paramiko
 
+# Load .env file if exists
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip())
+
 HOST = os.environ.get("SAST_HOST", "")
-USER = os.environ.get("SAST_USER", "root")
+USER = os.environ.get("SAST_USER", "deployer")
 PASSWORD = os.environ.get("SAST_PASSWORD", "")
 QWEN_API_KEY = os.environ.get("QWEN_API_KEY", "")
 
+missing = []
 if not HOST:
-    sys.exit("ERROR: SAST_HOST environment variable is not set")
+    missing.append("SAST_HOST")
 if not PASSWORD:
-    sys.exit("ERROR: SAST_PASSWORD environment variable is not set")
+    missing.append("SAST_PASSWORD")
 if not QWEN_API_KEY:
-    sys.exit("ERROR: QWEN_API_KEY environment variable is not set")
+    missing.append("QWEN_API_KEY")
+
+if missing:
+    sys.exit(f"ERROR: Missing required env vars: {', '.join(missing)}\n"
+             f"  Set them as environment variables or add to .env file")
 
 NGINX_MAIN = """user nginx;
 worker_processes auto;
@@ -54,9 +71,10 @@ Description=AI-SAST Backend
 After=network.target
 [Service]
 Type=simple
+User=deployer
 WorkingDirectory=/data/ai-sast/backend
 Environment=QWEN_API_KEY=%s
-ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/usr/bin/python3.11 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 [Install]
 WantedBy=multi-user.target"""
@@ -77,7 +95,7 @@ class Deployer:
         return out + ("\nERR: " + err[:300] if err else "")
 
     def write_file(self, path, content):
-        stdin, stdout, stderr = self.client.exec_command("tee " + path, timeout=10)
+        stdin, stdout, stderr = self.client.exec_command("sudo tee " + path, timeout=10)
         stdin.write(content + "\n")
         stdin.flush()
         stdin.channel.shutdown_write()
@@ -95,12 +113,12 @@ class Deployer:
         print(self.run("dnf install -y nginx 2>&1 | tail -2", 60))
         print(self.write_file("/etc/nginx/nginx.conf", NGINX_MAIN))
         print(self.write_file("/etc/nginx/conf.d/ai-sast.conf", NGINX_SITE))
-        print(self.run("nginx -t 2>&1 && systemctl enable nginx && systemctl restart nginx", 15))
+        print(self.run("nginx -t 2>&1 && sudo systemctl enable nginx && sudo systemctl restart nginx", 15))
 
         print("4. Configuring backend service...")
         svc_content = SYSTEMD_SERVICE % QWEN_API_KEY
         print(self.write_file("/etc/systemd/system/ai-sast.service", svc_content))
-        print(self.run("systemctl daemon-reload && systemctl enable ai-sast && systemctl restart ai-sast", 15))
+        print(self.run("sudo systemctl daemon-reload && sudo systemctl enable ai-sast && sudo systemctl restart ai-sast", 15))
 
         print("5. Verifying...")
         time.sleep(3)
