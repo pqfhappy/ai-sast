@@ -59,6 +59,8 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
   color: #f0f0f0 !important;
   --el-table-border-color: #3a3a5e !important;
   --el-table-row-hover-bg-color: #2a2a4e !important;
+  --el-fill-color-lighter: transparent !important;
+  --el-fill-color: #1e1e3a !important;
 }
 .el-table th.el-table__cell {
   background: #16213e !important;
@@ -68,12 +70,28 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .el-table td.el-table__cell {
   color: #f0f0f0 !important;
   border-bottom: 1px solid #2a2a4e !important;
+  background: #1e1e3a !important;
 }
 .el-table--striped .el-table__body tr.el-table__row--striped td {
   background: #252545 !important;
 }
+.el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #252545 !important;
+}
+.el-table__body tr.el-table__row > td.el-table__cell {
+  background: #1e1e3a !important;
+}
+.el-table__body tr.el-table__row--striped > td.el-table__cell {
+  background: #252545 !important;
+}
 .el-table tr:hover > td {
   background-color: #2a2a4e !important;
+}
+.el-table__expanded-cell {
+  background: #1a1a30 !important;
+}
+.el-table__body-wrapper {
+  background: #1e1e3a !important;
 }
 
 .el-dialog {

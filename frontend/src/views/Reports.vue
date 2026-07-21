@@ -19,7 +19,30 @@
           <el-tag style="margin-left: 8px" type="info">{{ lowCount }} 个低危</el-tag>
         </span>
       </template>
-      <el-table :data="vulnerabilities" stripe>
+
+      <el-table :data="vulnerabilities" stripe @row-click="toggleRow">
+        <el-table-column type="expand" width="1">
+          <template #default="{ row }">
+            <div v-if="row === expandedRow" class="vuln-detail">
+              <div class="detail-section">
+                <div class="detail-label">漏洞描述</div>
+                <div class="detail-text">{{ row.description || '无描述' }}</div>
+              </div>
+              <div class="detail-section" v-if="row.code_snippet">
+                <div class="detail-label">问题代码</div>
+                <pre class="code-block">{{ row.code_snippet }}</pre>
+              </div>
+              <div class="detail-section" v-if="row.remediation">
+                <div class="detail-label">修复建议</div>
+                <div class="detail-text fix-text">{{ row.remediation }}</div>
+              </div>
+              <div class="detail-section" v-if="row.agent_notes">
+                <div class="detail-label">Agent分析备注</div>
+                <div class="detail-text">{{ row.agent_notes }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="vulnerability_type" label="漏洞类型" width="180" />
         <el-table-column prop="severity" label="严重程度" width="100">
           <template #default="{ row }">
@@ -29,29 +52,20 @@
         <el-table-column prop="line_start" label="行号" width="70">
           <template #default="{ row }">{{ row.line_start }}{{ row.line_end && row.line_end !== row.line_start ? '-' + row.line_end : '' }}</template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="300" show-overflow-tooltip />
+        <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
         <el-table-column prop="confidence" label="置信度" width="80">
           <template #default="{ row }">{{ row.confidence }}%</template>
         </el-table-column>
-        <el-table-column label="来源" width="80">
+        <el-table-column label="来源" width="70">
           <template #default="{ row }">
             <el-tag size="small">{{ row.source || 'ai' }}</el-tag>
           </template>
         </el-table-column>
       </el-table>
-
-      <el-divider content-position="left" v-if="expandedVuln">漏洞详情</el-divider>
-      <div v-if="expandedVuln" style="padding: 12px; background: #252545; border-radius: 6px; margin-top: 12px; border: 1px solid #3a3a5e">
-        <p><strong>类型：</strong>{{ expandedVuln.vulnerability_type }}</p>
-        <p><strong>描述：</strong>{{ expandedVuln.description }}</p>
-        <p v-if="expandedVuln.remediation"><strong>修复建议：</strong>{{ expandedVuln.remediation }}</p>
-        <p v-if="expandedVuln.code_snippet"><strong>代码片段：</strong></p>
-        <pre v-if="expandedVuln.code_snippet" style="background: #0d0d1a; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px">{{ expandedVuln.code_snippet }}</pre>
-      </div>
     </el-card>
 
     <el-card shadow="never" v-else-if="selectedScan">
-      <div style="text-align: center; padding: 40px; color: #8080a0">该扫描未发现漏洞，或报告正在生成中...</div>
+      <div class="empty-state">该扫描未发现漏洞，或报告正在生成中...</div>
     </el-card>
   </div>
 </template>
@@ -66,7 +80,7 @@ const scans = ref([])
 const projects = ref([])
 const selectedScan = ref(null)
 const vulnerabilities = ref([])
-const expandedVuln = ref(null)
+const expandedRow = ref(null)
 
 const total = ref(0)
 const highCount = ref(0)
@@ -104,4 +118,29 @@ const fetchReport = async () => {
   highCount.value = res.data.filter(v => v.severity === 'critical' || v.severity === 'high').length
   lowCount.value = res.data.filter(v => v.severity === 'low' || v.severity === 'info').length
 }
+
+const toggleRow = (row) => {
+  expandedRow.value = expandedRow.value === row ? null : row
+}
 </script>
+
+<style scoped>
+.empty-state { text-align: center; padding: 40px; color: #8080a0; }
+.vuln-detail { padding: 16px 20px; }
+.detail-section { margin-bottom: 14px; }
+.detail-label {
+  font-size: 12px; font-weight: 600; color: #8888b0;
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+}
+.detail-text { font-size: 14px; color: #d0d0e0; line-height: 1.6; }
+.fix-text {
+  padding: 12px; background: rgba(103,194,58,0.08); border-radius: 6px;
+  border-left: 3px solid #67c23a;
+}
+.code-block {
+  background: #0a0a1a !important; color: #e0e0e0 !important;
+  padding: 12px; border-radius: 6px; overflow-x: auto;
+  font-size: 13px; line-height: 1.6; border: 1px solid #3a3a5e;
+  white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+}
+</style>
