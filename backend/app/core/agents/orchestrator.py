@@ -19,10 +19,10 @@ class AgentOrchestrator:
         reviewer_result = await self.reviewer.analyze(code, language)
         round_results.append({"round": 0, "agent": "reviewer", "result": reviewer_result})
 
-        security_result = await self.security.analyze(code, reviewer_result)
+        security_result = await self.security.analyze(code, reviewer_result, language)
         round_results.append({"round": 0, "agent": "security", "result": security_result})
 
-        fix_result = await self.fixer.analyze(code, security_result)
+        fix_result = await self.fixer.analyze(code, security_result, language)
         round_results.append({"round": 0, "agent": "fixer", "result": fix_result})
 
         for round_num in range(1, self.MAX_ROUNDS + 1):

@@ -29,6 +29,10 @@
           <el-option label="Python" value="python" />
           <el-option label="JavaScript" value="javascript" />
           <el-option label="Java" value="java" />
+          <el-option label="C" value="c" />
+          <el-option label="C++" value="cpp" />
+          <el-option label="Rust" value="rust" />
+          <el-option label="Go" value="go" />
         </el-select>
         <el-button type="primary" @click="analyzeCode" :loading="loading">开始Agent协作分析</el-button>
       </div>

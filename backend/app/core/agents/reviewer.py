@@ -15,8 +15,6 @@ class ReviewAgent(BaseAgent):
 
         prompt = f"""请审查以下代码，找出潜在的安全漏洞。
 
-语言：{language}
-
 代码：
 ```{language}
 {code}
@@ -41,7 +39,7 @@ Semgrep扫描结果：
   "risk_score": 0-100
 }}
 只输出JSON。"""
-        result = await self._llm_call_json(prompt)
+        result = await self._llm_call_json(prompt, language)
         result["_semgrep_raw"] = semgrep_results
         result["_agent"] = self.name
         return result

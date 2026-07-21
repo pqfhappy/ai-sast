@@ -8,11 +8,11 @@ class FixAgent(BaseAgent):
             role="你是一位经验丰富的代码修复专家。你擅长为各类安全漏洞提供具体的修复方案，代码质量高，遵循最佳实践。你会评估修复成本和可行性。"
         )
 
-    async def analyze(self, code: str, security_result: dict) -> dict:
+    async def analyze(self, code: str, security_result: dict, language: str = "python") -> dict:
         prompt = f"""请为以下安全漏洞提供修复方案。
 
 原始代码：
-```python
+```{language}
 {code}
 ```
 
@@ -36,7 +36,7 @@ class FixAgent(BaseAgent):
   "summary": "修复建议总结"
 }}
 只输出JSON。"""
-        return await self._llm_call_json(prompt)
+        return await self._llm_call_json(prompt, language)
 
     async def revise(self, previous_result: dict, challenges: list) -> dict:
         prompt = f"""你之前的修复建议是：

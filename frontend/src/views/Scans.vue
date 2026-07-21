@@ -13,6 +13,17 @@
         <el-form-item label="代码">
           <el-input v-model="scanForm.code" type="textarea" :rows="3" placeholder="粘贴要扫描的代码" style="width: 400px" />
         </el-form-item>
+        <el-form-item label="语言">
+          <el-select v-model="scanForm.language" style="width: 120px">
+            <el-option label="Python" value="python" />
+            <el-option label="JavaScript" value="javascript" />
+            <el-option label="Java" value="java" />
+            <el-option label="C" value="c" />
+            <el-option label="C++" value="cpp" />
+            <el-option label="Rust" value="rust" />
+            <el-option label="Go" value="go" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleCreateAndRun" :loading="running">创建并扫描</el-button>
         </el-form-item>

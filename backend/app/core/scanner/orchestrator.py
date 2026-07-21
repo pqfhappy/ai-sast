@@ -19,7 +19,7 @@ class ScanOrchestrator:
             bandit_results = await self.bandit.scan_file(file_path)
             findings.extend(bandit_results)
 
-        ai_result = await self.ai.analyze_code(code)
+        ai_result = await self.ai.analyze_code(code, language)
         for v in ai_result.get("vulnerabilities", []):
             findings.append({
                 "check_id": v.get("type", ""),

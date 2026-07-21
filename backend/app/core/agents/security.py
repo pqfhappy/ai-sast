@@ -8,11 +8,11 @@ class SecurityAgent(BaseAgent):
             role="你是一位顶级安全专家，擅长深度分析漏洞的利用路径和影响范围。你熟悉OWASP Top 10、CWE漏洞分类体系和CVSS评分标准。你习惯质疑他人的判断，确保不放过任何真正的威胁。"
         )
 
-    async def analyze(self, code: str, reviewer_result: dict) -> dict:
+    async def analyze(self, code: str, reviewer_result: dict, language: str = "python") -> dict:
         prompt = f"""请对以下代码进行深度安全分析。
 
 代码：
-```python
+```{language}
 {code}
 ```
 
@@ -54,7 +54,7 @@ class SecurityAgent(BaseAgent):
   "summary": "深度分析总结"
 }}
 只输出JSON。"""
-        return await self._llm_call_json(prompt)
+        return await self._llm_call_json(prompt, language)
 
     async def revise(self, previous_result: dict, challenges: list) -> dict:
         prompt = f"""你之前的安全分析结果是：

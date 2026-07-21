@@ -10,13 +10,11 @@ class AIScanner:
         )
         self.model = settings.QWEN_MODEL
 
-    async def analyze_code(self, code: str, context: str = "") -> dict:
-        prompt = f"""你是一个代码安全专家。请分析以下代码中的安全漏洞。
-
-{context}
+    async def analyze_code(self, code: str, language: str = "python") -> dict:
+        prompt = f"""你是一个代码安全专家。请分析以下{language}代码中的安全漏洞。
 
 代码：
-```python
+```{language}
 {code}
 ```
 

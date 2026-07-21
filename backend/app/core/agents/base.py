@@ -12,11 +12,21 @@ class BaseAgent:
         )
         self.model = settings.QWEN_MODEL
 
-    async def _llm_call(self, prompt: str, response_format: dict = None) -> str:
+    async def _llm_call(self, prompt: str, response_format: dict = None, language: str = "python") -> str:
+        lang_map = {
+            "c": ("C", "//"),
+            "cpp": ("C++", "//"),
+            "rust": ("Rust", "//"),
+            "go": ("Go", "//"),
+            "python": ("Python", "#"),
+            "javascript": ("JavaScript", "//"),
+            "java": ("Java", "//"),
+        }
+        lang_name = lang_map.get(language, (language, "#"))[0]
         kwargs = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": f"你是{self.name}，{self.role}"},
+                {"role": "system", "content": f"你是{self.name}，{self.role}。你精通{lang_name}代码安全分析。"},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.3,
@@ -26,10 +36,11 @@ class BaseAgent:
         resp = await self.client.chat.completions.create(**kwargs)
         return resp.choices[0].message.content
 
-    async def _llm_call_json(self, prompt: str) -> dict:
+    async def _llm_call_json(self, prompt: str, language: str = "python") -> dict:
         import json
         content = await self._llm_call(
             prompt,
             response_format={"type": "json_object"},
+            language=language,
         )
         return json.loads(content)
