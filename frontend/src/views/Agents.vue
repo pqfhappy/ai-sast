@@ -38,6 +38,11 @@
           <el-option label="Go" value="go" />
         </el-select>
         <el-button type="primary" @click="analyzeCode" :loading="loading">开始Agent协作分析</el-button>
+        <el-tag v-if="taskStatus === 'running'" type="warning" effect="dark">
+          <span style="display:inline-block;animation:pulse 1s infinite">●</span> 分析中...
+        </el-tag>
+        <el-tag v-else-if="taskStatus === 'completed'" type="success">分析完成</el-tag>
+        <el-tag v-else-if="taskStatus === 'failed'" type="danger">分析失败</el-tag>
       </div>
     </el-card>
 
@@ -195,7 +200,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
 const agents = ref([
@@ -210,25 +215,85 @@ const result = ref(null)
 const expandedRounds = ref({})
 const fixDialog = ref(false)
 const currentFix = ref('')
+const taskStatus = ref('')
+
+let pollTimer = null
+
+onMounted(() => {
+  const savedTaskId = localStorage.getItem('agent_task_id')
+  const savedCode = localStorage.getItem('agent_code')
+  const savedLang = localStorage.getItem('agent_language')
+  if (savedTaskId) {
+    codeInput.value = savedCode || ''
+    language.value = savedLang || 'python'
+    taskStatus.value = 'running'
+    loading.value = true
+    pollTask(savedTaskId)
+  }
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
+
+const startAsyncAnalysis = async () => {
+  if (!codeInput.value) return
+  loading.value = true
+  taskStatus.value = 'running'
+  try {
+    const res = await axios.post('/api/agents/analyze/async', { code: codeInput.value, language: language.value })
+    const taskId = res.data.task_id
+    localStorage.setItem('agent_task_id', taskId)
+    localStorage.setItem('agent_code', codeInput.value)
+    localStorage.setItem('agent_language', language.value)
+    pollTask(taskId)
+  } catch (e) {
+    console.error(e)
+    loading.value = false
+    taskStatus.value = 'failed'
+  }
+}
+
+const pollTask = (taskId) => {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await axios.get(`/api/agents/analyze/${taskId}`)
+      if (res.data.status === 'completed') {
+        clearInterval(pollTimer)
+        pollTimer = null
+        result.value = res.data.result
+        expandedRounds.value = {}
+        for (let i = 0; i < (res.data.result?.rounds?.length || 0); i++) {
+          expandedRounds.value[i] = true
+        }
+        loading.value = false
+        taskStatus.value = 'completed'
+        localStorage.removeItem('agent_task_id')
+        localStorage.removeItem('agent_code')
+        localStorage.removeItem('agent_language')
+      } else if (res.data.status === 'failed') {
+        clearInterval(pollTimer)
+        pollTimer = null
+        loading.value = false
+        taskStatus.value = 'failed'
+        console.error('Analysis failed:', res.data.error)
+        localStorage.removeItem('agent_task_id')
+        localStorage.removeItem('agent_code')
+        localStorage.removeItem('agent_language')
+      }
+    } catch (e) {
+      // polling error, ignore
+    }
+  }, 2000)
+}
 
 const toggleRound = (idx) => {
   expandedRounds.value[idx] = !expandedRounds.value[idx]
 }
 
 const analyzeCode = async () => {
-  if (!codeInput.value) return
-  loading.value = true
-  try {
-    const res = await axios.post('/api/agents/analyze', { code: codeInput.value, language: language.value })
-    result.value = res.data
-    expandedRounds.value = {}
-    for (let i = 0; i < (res.data.rounds?.length || 0); i++) {
-      expandedRounds.value[i] = true
-    }
-  } catch (e) {
-    console.error(e)
-  }
-  loading.value = false
+  startAsyncAnalysis()
 }
 
 const sevTag = (sev) => {
@@ -295,6 +360,8 @@ const showFix = (row) => {
   padding: 16px; border-radius: 6px; overflow-x: auto;
   font-size: 13px; line-height: 1.6; white-space: pre-wrap;
 }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 @media (max-width: 768px) {
   .summary-grid { grid-template-columns: 1fr; }
