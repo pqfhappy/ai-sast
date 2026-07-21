@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.project import ScanTask, ScanStatus, Vulnerability, VulnerabilitySeverity
@@ -12,13 +13,18 @@ async def get_db():
     async with async_session() as session:
         yield session
 
+class ScanRunRequest(BaseModel):
+    code: str
+    language: str = "python"
+    file_path: str = ""
+
 @router.get("")
 async def list_scans(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ScanTask).order_by(ScanTask.created_at.desc()))
     return result.scalars().all()
 
 @router.post("")
-async def create_scan(project_id: int, branch: str = "main", db: AsyncSession = Depends(get_db)):
+async def create_scan(project_id: int, branch: str = "master", db: AsyncSession = Depends(get_db)):
     scan = ScanTask(project_id=project_id, branch=branch)
     db.add(scan)
     await db.commit()
@@ -34,7 +40,7 @@ async def get_scan(scan_id: int, db: AsyncSession = Depends(get_db)):
     return scan
 
 @router.post("/{scan_id}/run")
-async def run_scan(scan_id: int, code: str, language: str = "python", db: AsyncSession = Depends(get_db)):
+async def run_scan(scan_id: int, req: ScanRunRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ScanTask).where(ScanTask.id == scan_id))
     scan = result.scalar_one_or_none()
     if not scan:
@@ -44,7 +50,7 @@ async def run_scan(scan_id: int, code: str, language: str = "python", db: AsyncS
     await db.commit()
 
     try:
-        scan_result = await orchestrator.scan_code(code, language)
+        scan_result = await orchestrator.scan_code(req.code, req.language, req.file_path)
         for finding in scan_result["findings"]:
             vuln = Vulnerability(
                 scan_id=scan_id,
@@ -52,11 +58,11 @@ async def run_scan(scan_id: int, code: str, language: str = "python", db: AsyncS
                 line_start=finding.get("start_line"),
                 line_end=finding.get("end_line"),
                 vulnerability_type=finding.get("check_id", "unknown"),
-                severity=self._parse_severity(finding.get("severity", "MEDIUM")),
+                severity=_parse_severity(finding.get("severity", "MEDIUM")),
                 description=finding.get("message", ""),
                 remediation=finding.get("remediation", ""),
                 confidence=finding.get("confidence", 50),
-                code_snippet=code,
+                code_snippet=req.code,
             )
             db.add(vuln)
 
@@ -70,7 +76,7 @@ async def run_scan(scan_id: int, code: str, language: str = "python", db: AsyncS
 
     return scan_result
 
-def _parse_severity(self, sev: str) -> VulnerabilitySeverity:
+def _parse_severity(sev: str) -> VulnerabilitySeverity:
     mapping = {
         "CRITICAL": VulnerabilitySeverity.CRITICAL,
         "HIGH": VulnerabilitySeverity.HIGH,

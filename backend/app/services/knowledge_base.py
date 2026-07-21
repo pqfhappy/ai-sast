@@ -1,3 +1,10 @@
+try:
+    import pysqlite3
+    import sys
+    sys.modules["sqlite3"] = pysqlite3
+except ImportError:
+    pass
+
 import chromadb
 from chromadb.config import Settings
 from app.config import settings

@@ -9,11 +9,15 @@ class ScanOrchestrator:
         self.bandit = BanditScanner()
         self.ai = AIScanner()
 
-    async def scan_code(self, code: str, language: str = "python") -> dict:
+    async def scan_code(self, code: str, language: str = "python", file_path: str = "") -> dict:
         findings = []
 
         semgrep_results = await self.semgrep.scan(code, language)
         findings.extend(semgrep_results)
+
+        if file_path:
+            bandit_results = await self.bandit.scan_file(file_path)
+            findings.extend(bandit_results)
 
         ai_result = await self.ai.analyze_code(code)
         for v in ai_result.get("vulnerabilities", []):
