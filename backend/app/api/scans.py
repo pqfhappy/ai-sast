@@ -6,6 +6,27 @@ from app.models.project import ScanTask, ScanStatus, Vulnerability, Vulnerabilit
 from app.services.database import async_session
 from app.core.scanner.orchestrator import ScanOrchestrator
 
+
+def _extract_code_snippet(full_code: str, line_start: int, line_end: int = None, context_lines: int = 2) -> str:
+    """Extract specific vulnerable lines with line numbers and context."""
+    lines = full_code.splitlines()
+    if not lines:
+        return full_code
+
+    start = max(0, (line_start or 1) - 1 - context_lines)
+    end = min(len(lines), (line_end or line_start or 1) + context_lines)
+
+    snippet = []
+    for i in range(start, end):
+        line_num = i + 1
+        prefix = ">>>" if (line_end and line_start <= line_num <= line_end) or (line_num == line_start) else "   "
+        snippet.append(f"{prefix} {line_num:4d} | {lines[i]}")
+
+    result = "\n".join(snippet)
+    if line_start:
+        result += f"\n--- 第 {line_start} 行附近 (共 {len(lines)} 行)"
+    return result
+
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 orchestrator = ScanOrchestrator()
 
@@ -52,6 +73,11 @@ async def run_scan(scan_id: int, req: ScanRunRequest, db: AsyncSession = Depends
     try:
         scan_result = await orchestrator.scan_code(req.code, req.language, req.file_path)
         for finding in scan_result["findings"]:
+            snippet = _extract_code_snippet(
+                req.code,
+                finding.get("start_line"),
+                finding.get("end_line"),
+            )
             vuln = Vulnerability(
                 scan_id=scan_id,
                 file_path=finding.get("path", "inline"),
@@ -62,7 +88,7 @@ async def run_scan(scan_id: int, req: ScanRunRequest, db: AsyncSession = Depends
                 description=finding.get("message", ""),
                 remediation=finding.get("remediation", ""),
                 confidence=finding.get("confidence", 50),
-                code_snippet=req.code,
+                code_snippet=snippet,
             )
             db.add(vuln)
 

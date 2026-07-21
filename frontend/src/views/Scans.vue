@@ -34,8 +34,10 @@
       <template #header><span>扫描历史</span></template>
       <el-table :data="scans" stripe @row-click="viewReport" style="cursor: pointer">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="project_id" label="项目" width="80">
-          <template #default="{ row }">{{ projName(row.project_id) }}</template>
+        <el-table-column prop="project_id" label="项目" width="120">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click.stop="$router.push('/projects')">{{ projName(row.project_id) }}</el-button>
+          </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -43,7 +45,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="branch" label="分支" width="100" />
-        <el-table-column prop="total_vulnerabilities" label="漏洞数" width="80" />
+        <el-table-column prop="total_vulnerabilities" label="漏洞数" width="80">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click.stop="viewReport(row)">{{ row.total_vulnerabilities }}</el-button>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="创建时间" />
         <el-table-column label="操作" width="120">
           <template #default="{ row }">

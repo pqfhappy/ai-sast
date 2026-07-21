@@ -1,22 +1,28 @@
 <template>
   <div>
     <h3 style="margin-bottom: 20px">仪表盘概览</h3>
+
+    <!-- Stats Cards (clickable) -->
     <el-row :gutter="20">
       <el-col :span="6" v-for="card in stats" :key="card.label">
-        <el-card shadow="never" style="margin-bottom: 20px; text-align: center">
+        <el-card shadow="never" class="stat-card" @click="card.to ? $router.push(card.to) : null">
           <div style="font-size: 32px; font-weight: bold; color: #409eff">{{ card.value }}</div>
-          <div style="font-size: 14px; color: #a0a0c0; margin-top: 8px">{{ card.label }}</div>
+          <div class="stat-label">{{ card.label }}</div>
         </el-card>
       </el-col>
     </el-row>
-    <el-row :gutter="20">
+
+    <el-row :gutter="20" style="margin-top: 20px">
+      <!-- Recent Scans -->
       <el-col :span="14">
         <el-card shadow="never">
           <template #header><span>最近扫描</span></template>
-          <el-table :data="recentScans" stripe v-if="recentScans.length">
+          <el-table :data="recentScans" stripe v-if="recentScans.length" @row-click="goToReport">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="项目" width="120">
-              <template #default="{ row }">{{ projName(row.project_id) }}</template>
+              <template #default="{ row }">
+                <el-button link type="primary" @click.stop="$router.push('/projects')">{{ projName(row.project_id) }}</el-button>
+              </template>
             </el-table-column>
             <el-table-column prop="total_vulnerabilities" label="漏洞数" width="80" />
             <el-table-column prop="status" label="状态" width="90">
@@ -26,26 +32,53 @@
             </el-table-column>
             <el-table-column prop="created_at" label="时间" />
           </el-table>
-          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #8080a0">
-            暂无扫描数据
-          </div>
+          <div v-else class="empty-box">暂无扫描数据</div>
         </el-card>
       </el-col>
+
+      <!-- Donut Chart + Tag Cloud -->
       <el-col :span="10">
         <el-card shadow="never">
           <template #header><span>漏洞类型分布</span></template>
-          <div v-if="typeStats.length" style="padding: 12px">
-            <div v-for="t in typeStats" :key="t.type" style="margin-bottom: 10px">
-              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px">
-                <span>{{ t.type || '未分类' }}</span>
-                <span>{{ t.count }}</span>
+          <div v-if="typeStats.length" class="dist-container">
+            <!-- Donut Chart -->
+            <div class="donut-wrapper">
+              <svg viewBox="0 0 100 100" class="donut-svg">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#2a2a4e" stroke-width="12" />
+                <circle
+                  v-for="(seg, i) in donutSegments" :key="i"
+                  cx="50" cy="50" r="40" fill="none"
+                  :stroke="seg.color" stroke-width="12"
+                  stroke-linecap="butt"
+                  :stroke-dasharray="seg.dash"
+                  :stroke-dashoffset="seg.offset"
+                  transform="rotate(-90, 50, 50)"
+                  style="transition: all 0.5s"
+                />
+                <text x="50" y="48" text-anchor="middle" fill="#f0f0f0" font-size="16" font-weight="bold">{{ totalVulns }}</text>
+                <text x="50" y="62" text-anchor="middle" fill="#8888b0" font-size="6">漏洞总数</text>
+              </svg>
+            </div>
+            <!-- Tag Cloud -->
+            <div class="tag-cloud">
+              <span
+                v-for="t in typeStats" :key="t.type"
+                class="vuln-tag"
+                :style="{ fontSize: t.fontSize + 'px', color: t.color, borderColor: t.color }"
+                :title="`${t.type}: ${t.count}个`"
+                @click="$router.push('/reports')"
+              >{{ t.type }} ({{ t.count }})</span>
+            </div>
+            <!-- Legend -->
+            <div class="legend">
+              <div v-for="t in typeStats" :key="t.type" class="legend-item">
+                <span class="legend-dot" :style="{ background: t.color }"></span>
+                <span class="legend-label">{{ t.type }}</span>
+                <span class="legend-count">{{ t.count }}</span>
               </div>
-              <el-progress :percentage="t.pct" :stroke-width="12" :color="t.color" />
             </div>
           </div>
-          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #8080a0">
-            暂无漏洞数据
-          </div>
+          <div v-else class="empty-box">暂无漏洞数据</div>
         </el-card>
       </el-col>
     </el-row>
@@ -53,21 +86,42 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { listProjects, listScans } from '../api'
 import axios from 'axios'
 
+const router = useRouter()
 const projects = ref([])
 const scans = ref([])
 const recentScans = ref([])
 const typeStats = ref([])
+const totalVulns = ref(0)
 
 const stats = ref([
-  { label: '项目数', value: '-' },
-  { label: '扫描次数', value: '-' },
-  { label: '发现漏洞', value: '-' },
-  { label: 'Agent状态', value: '就绪' },
+  { label: '项目数', value: '-', to: '/projects' },
+  { label: '扫描次数', value: '-', to: '/scans' },
+  { label: '发现漏洞', value: '-', to: '/reports' },
+  { label: 'Agent状态', value: '就绪', to: '/agents' },
 ])
+
+const donutSegments = computed(() => {
+  const total = typeStats.value.reduce((s, t) => s + t.count, 0) || 1
+  const circumference = 2 * Math.PI * 40
+  let currentOffset = 0
+  return typeStats.value.map(t => {
+    const length = (t.count / total) * circumference
+    const seg = {
+      color: t.color,
+      dash: `${length} ${circumference - length}`,
+      offset: -currentOffset,
+    }
+    currentOffset += length
+    return seg
+  })
+})
+
+const DONUT_COLORS = ['#f56c6c', '#e6a23c', '#409eff', '#67c23a', '#b37feb', '#36cfc9', '#909399', '#79bbff']
 
 onMounted(async () => {
   try {
@@ -77,11 +131,10 @@ onMounted(async () => {
     stats.value[0].value = projects.value.length
     stats.value[1].value = scans.value.length
 
-    let totalVulns = 0
     const typeMap = {}
     for (const s of scans.value) {
       if (s.status === 'completed' && s.total_vulnerabilities) {
-        totalVulns += s.total_vulnerabilities
+        totalVulns.value += s.total_vulnerabilities
         try {
           const vulns = (await axios.get(`/api/reports/scan/${s.id}`)).data
           for (const v of vulns) {
@@ -91,13 +144,15 @@ onMounted(async () => {
         } catch (e) { /* skip */ }
       }
     }
-    stats.value[2].value = totalVulns
+    stats.value[2].value = totalVulns.value
 
     const entries = Object.entries(typeMap).sort((a, b) => b[1] - a[1])
     const maxCount = entries.length ? entries[0][1] : 1
-    const colors = ['#f56c6c', '#e6a23c', '#409eff', '#67c23a', '#909399', '#b37feb', '#36cfc9']
     typeStats.value = entries.map(([type, count], i) => ({
-      type, count, pct: Math.round(count / maxCount * 100), color: colors[i % colors.length]
+      type, count,
+      pct: Math.round(count / maxCount * 100),
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
+      fontSize: 12 + (count / maxCount) * 8,
     }))
   } catch (e) { console.log('API not ready', e) }
 })
@@ -106,4 +161,39 @@ const projName = (id) => {
   const p = projects.value.find(p => p.id === id)
   return p ? p.name : id
 }
+
+const goToReport = (row) => {
+  router.push(`/reports?scan_id=${row.id}`)
+}
 </script>
+
+<style scoped>
+.stat-card { text-align: center; cursor: pointer; transition: transform 0.15s; }
+.stat-card:hover { transform: translateY(-2px); }
+.stat-label { font-size: 14px; color: #a0a0c0; margin-top: 8px; }
+.empty-box { height: 200px; display: flex; align-items: center; justify-content: center; color: #8080a0; }
+
+/* Donut + Tags */
+.dist-container { padding: 8px; }
+.donut-wrapper { display: flex; justify-content: center; margin-bottom: 16px; }
+.donut-svg { width: 140px; height: 140px; }
+
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; }
+.vuln-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 12px;
+  border: 1px solid; cursor: pointer; transition: all 0.15s;
+  background: rgba(255,255,255,0.03);
+}
+.vuln-tag:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+
+.legend { display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-label { color: #c0c0d0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-count { color: #8888b0; }
+
+@media (max-width: 768px) {
+  .el-col { width: 100% !important; }
+  .donut-svg { width: 100px; height: 100px; }
+}
+</style>
