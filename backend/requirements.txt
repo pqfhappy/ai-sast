@@ -1,0 +1,10 @@
+fastapi>=0.115.0
+uvicorn[standard]
+pydantic-settings
+sqlalchemy>=2.0
+aiosqlite
+redis
+chromadb
+openai
+semgrep
+python-multipart
