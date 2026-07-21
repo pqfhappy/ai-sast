@@ -14,7 +14,7 @@
         <el-table-column prop="description" label="描述" />
         <el-table-column prop="fix" label="修复建议" />
       </el-table>
-      <div v-else style="color: #666; text-align: center; padding: 40px">正在加载知识库...</div>
+      <div v-else style="color: #8080a0; text-align: center; padding: 40px">正在加载知识库...</div>
     </el-card>
   </div>
 </template>

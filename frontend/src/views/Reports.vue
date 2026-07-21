@@ -41,7 +41,7 @@
       </el-table>
 
       <el-divider content-position="left" v-if="expandedVuln">漏洞详情</el-divider>
-      <div v-if="expandedVuln" style="padding: 12px; background: #1a1a2e; border-radius: 6px; margin-top: 12px">
+      <div v-if="expandedVuln" style="padding: 12px; background: #252545; border-radius: 6px; margin-top: 12px; border: 1px solid #3a3a5e">
         <p><strong>类型：</strong>{{ expandedVuln.vulnerability_type }}</p>
         <p><strong>描述：</strong>{{ expandedVuln.description }}</p>
         <p v-if="expandedVuln.remediation"><strong>修复建议：</strong>{{ expandedVuln.remediation }}</p>
@@ -51,7 +51,7 @@
     </el-card>
 
     <el-card shadow="never" v-else-if="selectedScan">
-      <div style="text-align: center; padding: 40px; color: #666">该扫描未发现漏洞，或报告正在生成中...</div>
+      <div style="text-align: center; padding: 40px; color: #8080a0">该扫描未发现漏洞，或报告正在生成中...</div>
     </el-card>
   </div>
 </template>

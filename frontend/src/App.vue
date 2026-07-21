@@ -19,7 +19,7 @@
         <h2 style="margin: 0; font-size: 18px; font-weight: 500">AI-SAST 智能安全扫描平台</h2>
         <div>
           <el-tag size="small" type="success" effect="dark" style="margin-right: 8px">● 运行中</el-tag>
-          <span style="font-size: 12px; color: #888">v0.1.0</span>
+          <span style="font-size: 12px; color: #8888b0">v0.1.0</span>
         </div>
       </el-header>
       <el-main style="background: #0f0f23; color: #e0e0e0; padding: 20px; min-height: calc(100vh - 60px)">

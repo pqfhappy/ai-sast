@@ -5,7 +5,7 @@
       <el-col :span="6" v-for="card in stats" :key="card.label">
         <el-card shadow="never" style="margin-bottom: 20px; text-align: center">
           <div style="font-size: 32px; font-weight: bold; color: #409eff">{{ card.value }}</div>
-          <div style="font-size: 14px; color: #888; margin-top: 8px">{{ card.label }}</div>
+          <div style="font-size: 14px; color: #a0a0c0; margin-top: 8px">{{ card.label }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -26,7 +26,7 @@
             </el-table-column>
             <el-table-column prop="created_at" label="时间" />
           </el-table>
-          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #666">
+          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #8080a0">
             暂无扫描数据
           </div>
         </el-card>
@@ -43,7 +43,7 @@
               <el-progress :percentage="t.pct" :stroke-width="12" :color="t.color" />
             </div>
           </div>
-          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #666">
+          <div v-else style="height: 200px; display: flex; align-items: center; justify-content: center; color: #8080a0">
             暂无漏洞数据
           </div>
         </el-card>
