@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.project import ScanTask, ScanStatus
+from app.models.project import ScanTask, ScanStatus, Vulnerability, VulnerabilitySeverity
 from app.services.database import async_session
+from app.core.scanner.orchestrator import ScanOrchestrator
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+orchestrator = ScanOrchestrator()
 
 async def get_db():
     async with async_session() as session:
@@ -22,3 +24,59 @@ async def create_scan(project_id: int, branch: str = "main", db: AsyncSession = 
     await db.commit()
     await db.refresh(scan)
     return scan
+
+@router.get("/{scan_id}")
+async def get_scan(scan_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ScanTask).where(ScanTask.id == scan_id))
+    scan = result.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+    return scan
+
+@router.post("/{scan_id}/run")
+async def run_scan(scan_id: int, code: str, language: str = "python", db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ScanTask).where(ScanTask.id == scan_id))
+    scan = result.scalar_one_or_none()
+    if not scan:
+        raise HTTPException(404, "Scan not found")
+
+    scan.status = ScanStatus.RUNNING
+    await db.commit()
+
+    try:
+        scan_result = await orchestrator.scan_code(code, language)
+        for finding in scan_result["findings"]:
+            vuln = Vulnerability(
+                scan_id=scan_id,
+                file_path=finding.get("path", "inline"),
+                line_start=finding.get("start_line"),
+                line_end=finding.get("end_line"),
+                vulnerability_type=finding.get("check_id", "unknown"),
+                severity=self._parse_severity(finding.get("severity", "MEDIUM")),
+                description=finding.get("message", ""),
+                remediation=finding.get("remediation", ""),
+                confidence=finding.get("confidence", 50),
+                code_snippet=code,
+            )
+            db.add(vuln)
+
+        scan.status = ScanStatus.COMPLETED
+        scan.total_vulnerabilities = scan_result["total"]
+        await db.commit()
+    except Exception as e:
+        scan.status = ScanStatus.FAILED
+        await db.commit()
+        raise HTTPException(500, str(e))
+
+    return scan_result
+
+def _parse_severity(self, sev: str) -> VulnerabilitySeverity:
+    mapping = {
+        "CRITICAL": VulnerabilitySeverity.CRITICAL,
+        "HIGH": VulnerabilitySeverity.HIGH,
+        "MEDIUM": VulnerabilitySeverity.MEDIUM,
+        "LOW": VulnerabilitySeverity.LOW,
+        "WARNING": VulnerabilitySeverity.MEDIUM,
+        "ERROR": VulnerabilitySeverity.HIGH,
+    }
+    return mapping.get(sev.upper(), VulnerabilitySeverity.MEDIUM)
