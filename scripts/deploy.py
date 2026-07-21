@@ -1,12 +1,26 @@
-"""AI-SAST deployment script for Alibaba Cloud ECS."""
+"""AI-SAST deployment script for Alibaba Cloud ECS.
+Usage: set env vars before running:
+  SAST_HOST (required) - ECS IP address
+  SAST_USER (optional, default: root)
+  SAST_PASSWORD (required) - SSH password
+  QWEN_API_KEY (required) - Tongyi Qianwen API key
+"""
 import os
+import sys
 import time
 import paramiko
 
-HOST = os.environ.get("SAST_HOST", "8.130.89.12")
+HOST = os.environ.get("SAST_HOST", "")
 USER = os.environ.get("SAST_USER", "root")
-PASSWORD = os.environ.get("SAST_PASSWORD", "Root@123")
+PASSWORD = os.environ.get("SAST_PASSWORD", "")
 QWEN_API_KEY = os.environ.get("QWEN_API_KEY", "")
+
+if not HOST:
+    sys.exit("ERROR: SAST_HOST environment variable is not set")
+if not PASSWORD:
+    sys.exit("ERROR: SAST_PASSWORD environment variable is not set")
+if not QWEN_API_KEY:
+    sys.exit("ERROR: QWEN_API_KEY environment variable is not set")
 
 NGINX_MAIN = """user nginx;
 worker_processes auto;
