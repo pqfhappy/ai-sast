@@ -7,7 +7,9 @@
       <el-table-column prop="name" label="项目名称" />
       <el-table-column prop="language" label="语言" width="120" />
       <el-table-column prop="status" label="状态" width="100" />
-      <el-table-column prop="created_at" label="创建时间" />
+      <el-table-column label="创建时间" min-width="160">
+        <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+      </el-table-column>
     </el-table>
     <el-dialog v-model="dialogVisible" title="新建项目">
       <el-form :model="form">
@@ -33,5 +35,14 @@ const handleCreate = async () => {
   await createProject(form.value)
   dialogVisible.value = false
   projects.value = (await listProjects()).data
+}
+const formatDate = (val) => {
+  if (!val) return '-'
+  const d = new Date(val.endsWith('Z') ? val : val + 'Z')
+  if (isNaN(d.getTime())) return val
+  const pad = (n) => String(n).padStart(2, '0')
+  const ms = d.getTime() + 8 * 3600000
+  const bj = new Date(ms)
+  return `${bj.getUTCFullYear()}-${pad(bj.getUTCMonth()+1)}-${pad(bj.getUTCDate())} ${pad(bj.getUTCHours())}:${pad(bj.getUTCMinutes())}:${pad(bj.getUTCSeconds())}`
 }
 </script>

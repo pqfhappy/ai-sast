@@ -1,7 +1,8 @@
 """Setup demo projects with real open-source project code for SAST scanning."""
+import os
 import requests, json
 
-BASE = "http://8.130.89.12/api"
+BASE = os.environ.get("SAST_BASE_URL", "http://localhost").rstrip("/") + "/api"
 
 # Pre-defined demo projects and their vulnerable code snippets
 DEMO_PROJECTS = [
@@ -222,4 +223,4 @@ for project in DEMO_PROJECTS:
     print(f"  -> 扫描完成, 发现 {vuln_count} 个漏洞")
 
 print("\n✅ 所有项目创建并扫描完成！")
-print(f"访问 http://8.130.89.12 查看效果")
+print(f"访问 {os.environ.get('SAST_BASE_URL', 'http://localhost')} 查看效果")

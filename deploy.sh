@@ -41,6 +41,6 @@ echo "🐳 启动Docker服务..."
 docker-compose up -d --build
 
 echo "✅ 部署完成！"
-echo "   前端: http://8.130.89.12"
-echo "   API: http://8.130.89.12:8000"
-echo "   API文档: http://8.130.89.12:8000/docs"
+echo "   前端: http://${PUBLIC_IP:-<ECS_PUBLIC_IP>}"
+echo "   API: http://${PUBLIC_IP:-<ECS_PUBLIC_IP>}:8000"
+echo "   API文档: http://${PUBLIC_IP:-<ECS_PUBLIC_IP>}:8000/docs"

@@ -1,8 +1,9 @@
 """Test SAST pipeline via ECS API."""
+import os
 import requests
 import json
 
-BASE = "http://8.130.89.12/api"
+BASE = os.environ.get("SAST_BASE_URL", "http://localhost").rstrip("/") + "/api"
 
 def log(label, response):
     print(f"\n=== {label} ===")

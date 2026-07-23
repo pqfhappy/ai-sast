@@ -19,18 +19,23 @@
           <template #header><span>最近扫描</span></template>
           <el-table :data="recentScans" stripe v-if="recentScans.length" @row-click="goToReport">
             <el-table-column prop="id" label="ID" width="60" />
-            <el-table-column label="项目" width="120">
+            <el-table-column label="项目" min-width="140" show-overflow-tooltip>
               <template #default="{ row }">
-                <el-button link type="primary" @click.stop="$router.push('/projects')">{{ projName(row.project_id) }}</el-button>
+                <span style="cursor:pointer;color:#7fc1ff" @click.stop="$router.push('/projects')">{{ projName(row.project_id) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_vulnerabilities" label="漏洞数" width="80" />
-            <el-table-column prop="status" label="状态" width="90">
+            <el-table-column prop="status" label="状态" width="120">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'completed' ? 'success' : 'warning'" size="small">{{ row.status }}</el-tag>
+                <el-tag v-if="row.status === 'running'" type="warning" size="small">
+                  <span class="scan-pulse"></span> 扫描中
+                </el-tag>
+                <el-tag v-else :type="row.status === 'completed' ? 'success' : 'warning'" size="small">{{ row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" />
+            <el-table-column label="时间" min-width="160">
+              <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+            </el-table-column>
           </el-table>
           <div v-else class="empty-box">暂无扫描数据</div>
         </el-card>
@@ -66,7 +71,7 @@
                 class="vuln-tag"
                 :style="{ fontSize: t.fontSize + 'px', color: t.color, borderColor: t.color }"
                 :title="`${t.type}: ${t.count}个`"
-                @click="$router.push('/reports')"
+                @click="$router.push('/reports?type=' + encodeURIComponent(t.type))"
               >{{ t.type }} ({{ t.count }})</span>
             </div>
             <!-- Legend -->
@@ -86,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listProjects, listScans } from '../api'
 import axios from 'axios'
@@ -97,6 +102,9 @@ const scans = ref([])
 const recentScans = ref([])
 const typeStats = ref([])
 const totalVulns = ref(0)
+let pollTimer = null
+
+const hasRunning = computed(() => scans.value.some(s => s.status === 'running' || s.status === 'pending'))
 
 const stats = ref([
   { label: '项目数', value: '-', to: '/projects' },
@@ -123,7 +131,7 @@ const donutSegments = computed(() => {
 
 const DONUT_COLORS = ['#f56c6c', '#e6a23c', '#409eff', '#67c23a', '#b37feb', '#36cfc9', '#909399', '#79bbff']
 
-onMounted(async () => {
+const fetchData = async () => {
   try {
     projects.value = (await listProjects()).data
     scans.value = (await listScans()).data
@@ -132,6 +140,7 @@ onMounted(async () => {
     stats.value[1].value = scans.value.length
 
     const typeMap = {}
+    totalVulns.value = 0
     for (const s of scans.value) {
       if (s.status === 'completed' && s.total_vulnerabilities) {
         totalVulns.value += s.total_vulnerabilities
@@ -155,7 +164,35 @@ onMounted(async () => {
       fontSize: 12 + (count / maxCount) * 8,
     }))
   } catch (e) { console.log('API not ready', e) }
+}
+
+const startPolling = () => {
+  if (pollTimer) return
+  pollTimer = setInterval(async () => {
+    if (!hasRunning.value) {
+      stopPolling()
+      return
+    }
+    try {
+      scans.value = (await listScans()).data
+      recentScans.value = scans.value.slice(0, 5)
+    } catch (e) { /* ignore */ }
+  }, 3000)
+}
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+onMounted(async () => {
+  await fetchData()
+  if (hasRunning.value) startPolling()
 })
+
+onUnmounted(() => stopPolling())
 
 const projName = (id) => {
   const p = projects.value.find(p => p.id === id)
@@ -164,6 +201,16 @@ const projName = (id) => {
 
 const goToReport = (row) => {
   router.push(`/reports?scan_id=${row.id}`)
+}
+
+const formatDate = (val) => {
+  if (!val) return '-'
+  const d = new Date(val.endsWith('Z') ? val : val + 'Z')
+  if (isNaN(d.getTime())) return val
+  const pad = (n) => String(n).padStart(2, '0')
+  const ms = d.getTime() + 8 * 3600000
+  const bj = new Date(ms)
+  return `${bj.getUTCFullYear()}-${pad(bj.getUTCMonth()+1)}-${pad(bj.getUTCDate())} ${pad(bj.getUTCHours())}:${pad(bj.getUTCMinutes())}:${pad(bj.getUTCSeconds())}`
 }
 </script>
 
@@ -195,5 +242,18 @@ const goToReport = (row) => {
 @media (max-width: 768px) {
   .el-col { width: 100% !important; }
   .donut-svg { width: 100px; height: 100px; }
+}
+
+.scan-pulse {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #e6a23c;
+  margin-right: 4px;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 </style>

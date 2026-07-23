@@ -11,6 +11,7 @@
         <el-menu-item index="/scans"><span class="menu-icon">🔍</span>扫描任务</el-menu-item>
         <el-menu-item index="/reports"><span class="menu-icon">📋</span>漏洞报告</el-menu-item>
         <el-menu-item index="/agents"><span class="menu-icon">🤖</span>Agent监控</el-menu-item>
+        <el-menu-item index="/experiment"><span class="menu-icon">🧪</span>实验专区</el-menu-item>
         <el-menu-item index="/knowledge"><span class="menu-icon">⚙️</span>知识库</el-menu-item>
       </el-menu>
     </el-aside>
@@ -114,6 +115,8 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .el-select-dropdown__item.hover { background: #2a2a4e !important; }
 
 .el-button--primary { background: #409eff !important; border-color: #409eff !important; }
+.el-button--link { color: #7fc1ff !important; font-weight: 500 !important; }
+.el-button--link:hover { color: #a0d4ff !important; }
 .el-button--default {
   background: #2a2a4e !important;
   border-color: #3a3a5e !important;
