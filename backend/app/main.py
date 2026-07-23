@@ -26,13 +26,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api import projects, scans, reports, agents, knowledge, evolution
+from app.api import projects, scans, reports, agents, knowledge, evolution, experiment
 app.include_router(projects.router)
 app.include_router(scans.router)
 app.include_router(reports.router)
 app.include_router(agents.router)
 app.include_router(knowledge.router)
 app.include_router(evolution.router)
+app.include_router(experiment.router)
 
 
 @app.get("/api/health")
