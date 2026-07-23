@@ -6,11 +6,17 @@ class BaseAgent:
     def __init__(self, name: str, role: str):
         self.name = name
         self.role = role
-        self.client = AsyncOpenAI(
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
-        )
+        self._client = None
         self.model = settings.QWEN_MODEL
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = AsyncOpenAI(
+                api_key=settings.QWEN_API_KEY,
+                base_url=settings.QWEN_BASE_URL,
+            )
+        return self._client
 
     async def _llm_call(self, prompt: str, response_format: dict = None, language: str = "python") -> str:
         lang_map = {

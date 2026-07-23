@@ -6,7 +6,7 @@ class BanditScanner:
     async def scan_file(self, file_path: str) -> list[dict]:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "bandit", "-f", "json", file_path,
+                "bandit", "-f", "json", "-r", file_path,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
